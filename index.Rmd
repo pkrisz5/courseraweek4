@@ -1,0 +1,72 @@
+---
+title: "Exercise quality prediction"
+author: "Krisztian Papp"
+date: "October 7, 2018"
+output: html_document
+---
+
+# Aim:
+
+The goal is predicting the quality of dumbell excercise useing data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants.
+
+## Data cleaning
+The data come from: http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har.
+Load 'train' and 'test' dataset.
+```{r message=FALSE, warning=FALSE}
+library(readr)
+train<-read_csv("pml-training.csv")
+test<-read_csv(file="pml-testing.csv")
+```
+
+I remove following variables:
+ * contains mainly NA-s
+ * contains only the ID
+
+```{r}
+s<-colSums(apply(train, 2, is.na))
+plot(s, ylab = "Number of NA or empty cells", xlab="Variables", main = "Many variables contains mainly NA-s")
+keep_variables<-s<5000
+keep_variables[1]<-FALSE
+train<-train[,keep_variables]
+sr<-colSums(apply(train, 1, is.na))
+train<-train[sr==0,]
+train<-train
+test<-test[,keep_variables]
+```
+
+The clean dataset contains ony 58 varables, I will use only these in further analysis.
+
+Create "training" and "testing" datasets from the 'train' dataset:
+
+* Randomly choose 70% of 'train' dataset for training, and the leftover to calculate the of-sample error
+
+```{r message=FALSE}
+library(caret)
+library(rattle)
+set.seed(555)
+inTrain<-createDataPartition(y=train$classe, p=0.7, list=FALSE)
+training<-train[inTrain,]
+testing<-train[-inTrain,]
+```
+
+Fit a random forest model to the 'training' dataset
+```{r message=FALSE}
+fitm<-train(classe~., method="rf", data=training)
+fitm
+```
+* I used the "rf" method, as the "rpart" gave very poor result
+
+
+On "testing" dataset the out-of sample error is the following:
+```{r}
+pred<-predict(fitm, newdata = testing)
+confusionMatrix(as.factor(pred), as.factor(testing$classe))
+```
+
+Finally predit the "test" set classes:
+
+```{r}
+pred1<-predict(fitm, newdata = test)
+pred1
+```
+
